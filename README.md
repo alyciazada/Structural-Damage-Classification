@@ -9,7 +9,7 @@ Project ini mencoba memprediksi **tingkat kerusakan bangunan (`damage_grade`, sk
 
 | Item                | Hasil                                                                       |
 | ------------------- | --------------------------------------------------------------------------- |
-| Model               | LightGBM (gradient boosting berbasis pohon keputusan), tanpa Neural Network |
+| Model               | LightGBM (gradient boosting berbasis pohon keputusan) |
 | Metrik kompetisi    | Macro F1-Score                                                              |
 | Macro F1 validasi   | 0,596                                                                       |
 | Akurasi validasi    | 0,621                                                                       |
