@@ -217,7 +217,7 @@ Angka-angka di bawah berasal dari 533.465 bangunan pada data latih. Tidak ditemu
 | Grade 4 | 24,1%      |
 | Grade 5 | 36,2%      |
 
-Jumlah data tiap kelas ternyata tidak seimbang. Grade 5 jumlahnya jauh lebih banyak dibanding Grade 1 dan Grade 2. Karena itu, aku menggunakan Macro F1, bukan hanya akurasi, supaya performa di setiap kelas tetap diperhitungkan secara setara.
+Jumlah data tiap kelas ternyata tidak seimbang. Grade 5 jumlahnya jauh lebih banyak dibanding Grade 1 dan Grade 2. Karena itu, method menggunakan Macro F1 supaya performa di setiap kelas tetap diperhitungkan secara setara.
 
 [![Sebaran damage_grade](https://github.com/alyciazada/Structural-Damage-Classification/raw/main/reports/figures/target_distribution.png)](reports/figures/target_distribution.png)
 
