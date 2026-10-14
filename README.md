@@ -217,7 +217,7 @@ Angka-angka di bawah berasal dari 533.465 bangunan pada data latih. Tidak ditemu
 | Grade 4 | 24,1%      |
 | Grade 5 | 36,2%      |
 
-Jumlah data tiap kelas ternyata tidak seimbang. Grade 5 jumlahnya jauh lebih banyak dibanding Grade 1 dan Grade 2. Karena itu, method menggunakan Macro F1 supaya performa di setiap kelas tetap diperhitungkan secara setara.
+Jumlah data tiap kelas ternyata tidak seimbang. Grade 5 jumlahnya jauh lebih banyak dibanding Grade 1 dan Grade 2. Karena itu menggunakan Macro F1 supaya performa di setiap kelas tetap diperhitungkan secara setara.
 
 [![Sebaran damage_grade](https://github.com/alyciazada/Structural-Damage-Classification/raw/main/reports/figures/target_distribution.png)](reports/figures/target_distribution.png)
 
@@ -297,6 +297,14 @@ Pola prediksi pada data test mirip dengan data latih, yaitu Grade 5 paling banya
 3. **Penyetelan bobot kelas memberi peningkatan kecil.** Macro F1 naik dari 0,591 menjadi 0,596. Bobotnya menaikkan peluang Grade 2, 3, dan 4 (1,2; 1,2; 1,1) dan menurunkan Grade 1 dan 5 (0,8). Dengan begitu kelas tengah yang sulit ditebak lebih sering terpilih, sehingga precision dan recall tiap kelas menjadi lebih seimbang. Akurasi sedikit turun (0,626 menjadi 0,621) karena yang dikejar adalah Macro F1, bukan akurasi.
 4. **Akurasi (0,621) lebih tinggi daripada Macro F1 (0,596).** Hal ini wajar pada data yang kelasnya tidak seimbang, karena akurasi lebih dipengaruhi kelas besar yang lebih mudah ditebak.
 5. **Fitur penting.** Fitur paling berpengaruh adalah `ward_id` (nomor wilayah), disusul fitur tetangga seperti `c_groun_5_4`, `c_super_5_0`, dan `c_super_20_3`, serta fitur `te_g6sup_*` (hasil target encoding menurut lokasi dan jenis superstruktur). Fitur bangunan murni yang masuk 15 besar hanya `age_building` (umur bangunan). Artinya, model sangat mengandalkan **lokasi dan kondisi bangunan sejenis di sekitarnya**, sejalan dengan temuan EDA bahwa kerusakan sangat berbeda antar wilayah dan antar material bangunan. Nama fitur `c_*` berarti fitur tetangga yang dihitung dari tingkat kerusakan bangunan di sekitarnya dengan jenis superstruktur (`super`), lantai dasar (`groun`), atau fondasi (`found`) yang sama.
+
+## Keterbatasan dan Ide Pengembangan
+
+- Fitur tetangga memanfaatkan urutan `building_id`, yang menyimpan informasi terkait lokasi dan urutan survei. Cara ini cukup membantu untuk kompetisi ini karena data latih dan data test berasal dari wilayah yang sama, tetapi belum tentu cocok jika diterapkan di daerah lain.
+- Bobot kelas dituning menggunakan data validasi yang sama dengan data untuk menentukan kapan pelatihan dihentikan (*early stopping*). Jadi, ada kemungkinan skor validasi sedikit lebih tinggi daripada performa sebenarnya.
+- Dataset tidak menyediakan informasi kekuatan guncangan maupun jarak bangunan ke pusat gempa. Informasi lokasi yang digunakan model hanya berasal dari kode wilayah dan data bangunan di sekitarnya.
+- Untuk pengembangan berikutnya, project ini bisa dicoba dengan model lain seperti XGBoost atau CatBoost, menggabungkan beberapa model, memperluas pencarian parameter, dan menggunakan cross-validation yang lebih lengkap.
+
 
 ## Kesimpulan
 
