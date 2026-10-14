@@ -32,6 +32,7 @@ Dataset berasal dari kompetisi Kaggle dan tidak ikut disimpan di repository ini 
 | `train.csv`             | 533.465 bangunan, lengkap dengan `damage_grade` |
 | `test.csv`              | 228.629 bangunan yang harus diprediksi          |
 | `sample_submission.csv` | contoh format file pengumpulan                  |
+| `metadata.csv`          | deskripsi tiap kolom dalam dataset              |
 
 Kolom utama:
 
