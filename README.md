@@ -1,198 +1,291 @@
-# Structural Damage Classification — Gempa Gorkha, Nepal 2015
+# Klasifikasi Tingkat Kerusakan Bangunan Pasca Gempa Gorkha, Nepal (2015)
 
-Memprediksi **tingkat kerusakan bangunan (`damage_grade` 1–5)** pasca gempa Mw 7,8 Gorkha (25 April 2015) dari karakteristik struktural bangunan dan lokasinya, menggunakan data survei *Central Bureau of Statistics (CBS) Nepal*. Kompetisi Kaggle: **Structural Damage Classification** — metrik **Macro F1**.
+Project ini memprediksi **tingkat kerusakan bangunan (`damage_grade`, skala 1 sampai 5)** setelah gempa bumi Gorkha, Nepal, pada 25 April 2015 (magnitudo 7,8 Mw). Prediksi dibuat dari data karakteristik bangunan dan lokasinya.
 
-| | |
+- Kompetisi Kaggle: https://www.kaggle.com/t/a9196b92680b4492aeb06aeaee94f654
+- Repository: https://github.com/alyciazada/Structural-Damage-Classification
+
+## Ringkasan Hasil
+
+| Item | Hasil |
 |---|---|
-| Model | LightGBM multikelas di dalam scikit-learn `Pipeline` + `ColumnTransformer` |
-| Macro F1 validasi (20% train) | |
-| Public / Private score Kaggle |  |
-| Nama Kaggle / Nama |  |
+| Model | LightGBM (gradient boosting berbasis pohon keputusan), tanpa Neural Network |
+| Metrik kompetisi | Macro F1-Score |
+| Macro F1 validasi | **0,596** |
+| Akurasi validasi | **0,621** |
+| Public Score Kaggle | **0.59986** |
 
----
+Skor validasi dihitung pada 20% data latih (106.693 bangunan) yang disisihkan dan tidak dipakai untuk melatih model.
 
-## 1. Struktur repository
+## Latar Belakang
+
+Gempa bumi Gorkha terjadi di kedalaman yang dangkal sehingga merusak ratusan ribu bangunan. Setelah bencana, Central Bureau of Statistics (CBS) Nepal mensurvei bangunan yang terdampak. Data survei mencatat kondisi bangunan sebelum gempa (jenis fondasi, material dinding, atap, umur, jumlah lantai, dan kondisi tanah) beserta tingkat kerusakan yang dialaminya.
+
+Tujuan project ini adalah membuat model yang bisa memperkirakan tingkat kerusakan sebuah bangunan dari karakteristiknya. Model seperti ini dapat membantu memprioritaskan bangunan yang perlu diperiksa atau dibangun ulang.
+
+## Dataset
+
+Data diambil dari kompetisi Kaggle dan **tidak disimpan di repository ini** karena ukurannya besar.
+
+| File | Isi |
+|---|---|
+| `train.csv` | 533.465 bangunan, lengkap dengan `damage_grade` |
+| `test.csv` | 228.629 bangunan yang harus diprediksi |
+| `sample_submission.csv` | contoh format file pengumpulan |
+
+Kolom utama:
+- **Lokasi:** `district_id`, `vdcmun_id`, `ward_id`
+- **Ukuran bangunan:** `count_floors_pre_eq` (jumlah lantai), `plinth_area_sq_ft` (luas), `height_ft_pre_eq` (tinggi), `age_building` (umur)
+- **Jenis bangunan:** `foundation_type`, `roof_type`, `ground_floor_type`, `other_floor_type`, `position`, `plan_configuration`, `land_surface_condition`, `superstructure`
+- **Target:** `damage_grade` (Grade 1 sampai Grade 5, makin besar makin parah)
+
+## Struktur Repository
 
 ```
-structural-damage-classification/
+Structural-Damage-Classification/
 │
 ├── README.md
 ├── .gitignore
 ├── requirements.txt
 │
 ├── data/
-│   ├── .gitkeep
-│   ├── train.csv              # (tidak di-commit, unduh dari Kaggle)
-│   ├── test.csv               # (tidak di-commit)
-│   └── sample_submission.csv  # (tidak di-commit)
+│   └── .gitkeep                  # folder untuk train.csv, test.csv, sample_submission.csv (unduh sendiri)
 │
 ├── notebooks/
-│   ├── 01_eda.ipynb           # eksplorasi data
-│   ├── 02_modeling.ipynb      # fitur, pipeline, validasi, tuning bobot kelas, training akhir -> simpan model
-│   └── 03_submission.ipynb    # muat model, prediksi test, tulis submission.csv
+│   ├── 01_eda.ipynb              # eksplorasi data
+│   ├── 02_modeling.ipynb         # pembuatan fitur, pipeline, validasi, pelatihan model
+│   └── 03_submission.ipynb       # prediksi data test dan pembuatan file submission
 │
 ├── scripts/
 │   ├── __init__.py
-│   ├── config.py              # path, daftar kolom, hyper-parameter
-│   ├── preprocess.py          # load data, BaseFeatureBuilder, CategoryEncoder, ColumnTransformer tipe kategori
-│   ├── feature_engineering.py # target encoding, fitur tetangga, out-of-fold, LocationFeatureBuilder
-│   ├── train.py               # LGBMBoosterClassifier, build_pipeline, validasi, tuning bobot kelas, training akhir
-│   └── predict.py             # prediksi + penulisan submission.csv (CLI)
+│   ├── config.py                 # path, daftar kolom, parameter model
+│   ├── preprocess.py             # memuat data, fitur dasar, ColumnTransformer
+│   ├── feature_engineering.py    # fitur lokasi dan fitur tetangga
+│   ├── train.py                  # pipeline, validasi, tuning bobot kelas, pelatihan akhir
+│   └── predict.py                # prediksi dan pembuatan submission.csv
 │
 ├── models/
-│   └── pipeline_model_lgbm.pkl  # pipeline terlatih (dibuat oleh notebook/train.py)
+│   ├── pipeline_model_lgbm.pkl   # pipeline model yang sudah dilatih
+│   └── cfg3.json                 # bobot kelas hasil tuning (dibaca saat prediksi)
 │
 ├── submissions/
-│   └── submission.csv
+│   └── submission.csv            # file yang diunggah ke Kaggle
 │
 └── reports/
-    └── figures/               # gambar EDA, feature importance, confusion matrix
+    └── figures/                  # gambar hasil analisis
 ```
 
 | Folder/File | Fungsi |
 |---|---|
 | `README.md` | Dokumentasi utama proyek |
-| `.gitignore` | File yang tidak di-commit (`data/*.csv`, cache, dll.) |
-| `requirements.txt` | Dependency Python |
-| `data/` | Dataset dari Kaggle |
-| `notebooks/` | Notebook eksplorasi & eksperimen |
-| `scripts/` | Source code modular (`.py`, semua function/class memiliki docstring) |
-| `models/` | Model tersimpan |
-| `submissions/` | File submission CSV |
+| `.gitignore` | Daftar file yang tidak di-commit (misalnya data CSV besar) |
+| `requirements.txt` | Daftar library Python yang dibutuhkan |
+| `data/` | Tempat dataset dari Kaggle |
+| `notebooks/` | Notebook untuk eksplorasi, pemodelan, dan submission |
+| `scripts/` | Kode Python yang dibuat modular, setiap function dan class diberi docstring |
+| `models/` | Model yang sudah dilatih dan konfigurasinya |
+| `submissions/` | File hasil prediksi untuk Kaggle |
 | `reports/figures/` | Gambar hasil analisis |
 
----
+## Cara Menggunakan Repository
 
-## 2. Cara menggunakan repository
+### 1. Clone repository dan pasang library
 
-### 2.1 Clone & instal dependency
 ```bash
-git clone https://github.com/⟪USERNAME⟫/⟪NAMA-REPO⟫.git
-cd ⟪NAMA-REPO⟫
+git clone https://github.com/alyciazada/Structural-Damage-Classification.git
+cd Structural-Damage-Classification
 python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2.2 Unduh data dari Kaggle
-Data **tidak** disimpan di GitHub (di-ignore lewat `.gitignore`). Gabung kompetisi dan terima aturannya di Kaggle terlebih dahulu, lalu:
+### 2. Unduh data dari Kaggle
+
+Data tidak ada di GitHub. Bergabunglah dulu ke kompetisi dan terima aturannya di Kaggle, lalu unduh data dengan salah satu cara:
+
+- **Manual:** buka tab *Data* pada halaman kompetisi, klik *Download All*, lalu ekstrak `train.csv`, `test.csv`, dan `sample_submission.csv` ke folder `data/`.
+- **Kaggle CLI:**
+```bash
+  kaggle competitions download -c structural-damage-classification -p data/
+```
+  Setelah itu ekstrak file zip-nya ke folder `data/`.
+
+### 3. Jalankan notebook
+
+Jalankan secara berurutan dari folder `notebooks/` (menu *Run All*):
+
+1. `01_eda.ipynb` untuk eksplorasi data dan gambar analisis.
+2. `02_modeling.ipynb` untuk membuat fitur, melatih model, mengukur performa, lalu menyimpan model ke `models/`.
+3. `03_submission.ipynb` untuk memuat model, memprediksi data test, dan membuat `submissions/submission.csv`.
+
+### 4. Alternatif lewat script
+
+Dari folder utama repository:
 
 ```bash
-# Opsi A — Kaggle CLI (butuh API token di ~/.kaggle/kaggle.json)
-kaggle competitions download -c ⟪nama-kompetisi⟫ -p data/
-unzip data/⟪nama-kompetisi⟫.zip -d data/
-
-# Opsi B — manual: tab "Data" di halaman kompetisi → Download All → ekstrak ke folder data/
-```
-Pastikan `data/` berisi `train.csv`, `test.csv`, dan `sample_submission.csv`.
-
-### 2.3 Menjalankan
-**Lewat notebook** (dijalankan dari folder `notebooks/`):
-```bash
-cd notebooks
-jupyter notebook         # jalankan berurutan (Run All): 01_eda → 02_modeling → 03_submission
-```
-- `01_eda.ipynb` → gambar EDA di `reports/figures/`
-- `02_modeling.ipynb` → `models/pipeline_model_lgbm.pkl`, `models/cfg3.json` (bobot kelas), `feature_importance.png`, `confusion_matrix.png`
-- `03_submission.ipynb` → `submissions/submission.csv`
-
-**Lewat script** (dari root repository):
-```bash
-python -m scripts.train      # validasi → tuning bobot → latih akhir → simpan model + submission
-python -m scripts.predict    # hanya prediksi dari model tersimpan -> submissions/submission.csv (setara 03_submission.ipynb)
+python -m scripts.train      # latih model, simpan model, dan buat submission
+python -m scripts.predict    # hanya prediksi dari model yang sudah tersimpan
 ```
 
-### 2.4 Mengunggah ke Kaggle
-Upload `submissions/submission.csv` (kolom `building_id`, `damage_grade` berisi angka 1–5) di tab *Submit Predictions*.
+### 5. Unggah ke Kaggle
 
-> Catatan: di Google Colab, unggah `train.csv` dan `test.csv` ke `data/`, dan jalankan notebook dari folder `notebooks/`.
+Unggah `submissions/submission.csv` pada tab *Submit Predictions* di halaman kompetisi. Kolom `damage_grade` berisi angka 1 sampai 5.
 
----
-
-## 3. Workflow analisis
+## Alur Analisis (Workflow)
 
 ```
-Data mentah (train/test.csv)
-   │
-   ▼
-[01_eda]  kualitas data · distribusi target · hubungan fitur ↔ kerusakan
-   │
-   ▼
-[Fitur dasar]    umur di-clip 200 · luas & tinggi per lantai · kelompok lokasi dari building_id
-   │
-   ▼
-[Fitur lokasi]   target encoding (berpenghalusan) · fitur tetangga umum & bersyarat — dihitung OUT-OF-FOLD (10 fold)
-   │
-   ▼
-[Tipe kategori]  kolom kategorik + ID wilayah → dtype category (kategori dari data latih)
-   │
-   ▼
-[LightGBM]       multikelas, early stopping pada 20% data validasi
-   │
-   ▼
-[Tuning Macro F1] bobot per kelas dicari lewat coordinate ascent di data validasi
-   │
-   ▼
-[Training akhir]  latih ulang pada seluruh train (1,1 × iterasi terbaik) → simpan model          (02_modeling)
-   │
-   ▼
-[Submission]     muat model → prediksi test → validasi format → submission.csv                  (03_submission)
+Data mentah (train.csv, test.csv)
+        |
+        v
+1. Eksplorasi data (EDA)
+   cek data kosong, sebaran kelas, hubungan fitur dengan kerusakan
+        |
+        v
+2. Fitur dasar
+   umur dipotong maksimal 200, luas dan tinggi per lantai, kelompok lokasi dari building_id
+        |
+        v
+3. Fitur lokasi dan tetangga
+   rata-rata tingkat kerusakan per wilayah dan per bangunan di sekitarnya
+   (dihitung dengan cara out-of-fold supaya tidak "mencontek" label)
+        |
+        v
+4. Pengubahan tipe kolom
+   kolom kategori dan ID wilayah dijadikan tipe category
+        |
+        v
+5. Model LightGBM
+   dilatih dengan early stopping pada data validasi
+        |
+        v
+6. Penyetelan untuk Macro F1
+   bobot tiap kelas dicari agar Macro F1 setinggi mungkin
+        |
+        v
+7. Pelatihan akhir dan prediksi
+   model dilatih ulang pada seluruh data latih, lalu memprediksi data test
 ```
 
-### Pipeline & ColumnTransformer
-Seluruh preprocessing hingga model berada dalam satu objek `sklearn.pipeline.Pipeline` (`scripts/train.py::build_pipeline`):
+### Penggunaan Pipeline dan ColumnTransformer
 
-| Langkah | Komponen | Peran |
+Semua tahap pemrosesan sampai model digabung dalam satu `Pipeline` scikit-learn (lihat `build_pipeline` di `scripts/train.py`).
+
+| Langkah | Komponen | Fungsi |
 |---|---|---|
-| `features` | `ColumnTransformer([BaseFeatureBuilder, LocationFeatureBuilder])` | fitur dasar + fitur lokasi/tetangga |
-| `encode` | `ColumnTransformer([CategoryEncoder])` | menandai kolom kategorik & wilayah sebagai `category` |
-| `model` | `LGBMBoosterClassifier` | LightGBM (pembungkus `lightgbm.train`) |
+| `features` | `ColumnTransformer` berisi `BaseFeatureBuilder` dan `LocationFeatureBuilder` | membuat fitur dasar dan fitur lokasi/tetangga |
+| `encode` | `ColumnTransformer` berisi `CategoryEncoder` | mengubah kolom kategori ke tipe `category` |
+| `model` | `LGBMBoosterClassifier` | model LightGBM |
 
-Karena fitur lokasi memakai **label**, `LocationFeatureBuilder.fit_transform` mengembalikan fitur *out-of-fold* untuk data latih, sedangkan `transform` (validasi/test) memakai seluruh data latih sebagai referensi. Dengan begitu skor validasi jujur dan tidak ada kebocoran label.
+Dengan satu pipeline, langkah pemrosesan pada data latih dan data test dijamin sama, sehingga hasilnya konsisten dan mudah diulang.
 
----
+## Mengapa pakai method out-of-fold?
 
-## 4. Laporan interpretasi
+Fitur lokasi dibuat dari label (tingkat kerusakan) bangunan di sekitarnya. Kalau sebuah bangunan ikut dihitung dalam fiturnya sendiri, model seolah-olah "mengintip" jawabannya, dan skor validasi menjadi terlalu bagus. Karena itu data latih dibagi 10 bagian. Fitur setiap bagian dihitung hanya dari 9 bagian lainnya. Untuk data test, fitur dihitung dari seluruh data latih.
 
-### 4.1 Temuan dari EDA (angka dari data train, 533.465 bangunan)
-- **Kelas tidak seimbang**: Grade 5 = 36,2%, Grade 4 = 24,1%, Grade 3 = 17,9%, Grade 2 = 11,4%, Grade 1 = 10,3%. Karena itu dipakai Macro F1 dan bobot kelas untuk menyetel keputusan.
-- **Material superstruktur adalah faktor paling jelas.** Bangunan *stone* (`stone_flag`) 50,2% rusak total (Grade 5) dan *mud mortar–stone* 42,8%, sedangkan *RC engineered* hanya 0,7% Grade 5 dan 71,9% Grade 1. Material berikatan lumpur/tanpa semen jauh lebih rentan daripada beton bertulang/semen.
-- **Fondasi** sejalan: fondasi *mud mortar–stone/brick* 41,7% Grade 5 (hanya 4,7% Grade 1), fondasi RC 59,5% Grade 1.
-- **Jumlah lantai & umur**: rata-rata grade naik dari 2,99 (1 lantai) ke 4,09 (3 lantai), tetapi bangunan ≥4 lantai (jumlahnya sangat sedikit) kembali rendah (≈2,0–2,5) — kemungkinan karena bangunan tinggi lebih sering berupa beton bertulang. Rata-rata grade naik dengan umur (2,95 untuk 0–5 tahun → ≈4,06 untuk 41–80 tahun) lalu datar.
-- **Lokasi sangat menentukan**: rata-rata grade per distrik berkisar 2,35 (distrik 31) sampai 4,68 (distrik 23) — sesuai pola guncangan yang bergantung jarak dari episentrum. Ini alasan dibuatnya fitur wilayah dan tetangga.
-- Kualitas data: tidak ada nilai kosong, tidak ada `building_id` duplikat; umur memiliki nilai ekstrem (maks 999) sehingga di-*clip* di 200.
+## Hasil Eksplorasi Data (EDA)
 
-Gambar: `reports/figures/target_distribution.png`, `damage_by_superstructure.png`, `damage_by_foundation.png`, `damage_by_floors_age.png`, `damage_by_district.png`.
+Angka berikut dihitung dari 533.465 bangunan di data latih. Tidak ada nilai kosong dan tidak ada `building_id` ganda. Nilai umur bangunan punya data ekstrem (maksimum 999 tahun), jadi nilainya dipotong di 200.
 
-### 4.2 Performa model  *(isi setelah menjalankan `02_modeling.ipynb`)*
-| Metrik (data validasi 20%) | Nilai |
+### Sebaran kelas
+
+| Grade | Persentase |
 |---|---|
-| Macro F1 — `argmax` biasa | ⟪ISI: `val macroF1 raw`⟫ |
-| Macro F1 — setelah bobot kelas | ⟪ISI: `val macroF1 tuned`⟫ |
-| Akurasi | ⟪ISI: `acc`⟫ |
-| Iterasi terbaik (early stopping) | ⟪ISI: `best`⟫ |
-| Bobot kelas hasil tuning | ⟪ISI: `w`⟫ |
+| Grade 1 | 10,3% |
+| Grade 2 | 11,4% |
+| Grade 3 | 17,9% |
+| Grade 4 | 24,1% |
+| Grade 5 | 36,2% |
 
-Interpretasi yang bisa ditulis (sesuaikan dengan angka Anda):
-- Selisih Macro F1 *raw* vs *tuned* menunjukkan seberapa besar manfaat menggeser keputusan ke kelas minoritas (Grade 1–2); `argmax` condong ke kelas mayoritas (Grade 5/4).
-- Akurasi biasanya lebih tinggi daripada Macro F1 karena kelas tidak seimbang dan kelas tengah (Grade 2–3) sulit dibedakan.
+Kelas tidak seimbang: Grade 5 jauh lebih banyak daripada Grade 1 dan 2. Karena itu metrik yang dipakai adalah Macro F1, yang memperlakukan semua kelas sama penting, bukan akurasi biasa.
 
-### 4.3 Confusion matrix & kesalahan  *(`reports/figures/confusion_matrix.png`)*
-Tuliskan: kelas mana yang paling akurat (umumnya Grade 5 dan Grade 1 yang ekstrem), dan pasangan kelas yang paling sering tertukar (umumnya kelas bersebelahan, mis. 2↔3 dan 3↔4). Hal ini wajar karena `damage_grade` bersifat ordinal dan penilaian surveyor di batas antar-grade bersifat subjektif.
+![Sebaran damage_grade](reports/figures/target_distribution.png)
 
-### 4.4 Fitur paling berpengaruh  *(`reports/figures/feature_importance.png`)*
-Tuliskan 5 fitur teratas dari `imp.head(15)` dan artinya. Catat apakah fitur **lokasi/tetangga** (`nb*`, `te_*`, `c_*`) mendominasi dibanding fitur fisik bangunan (`superstructure`, `foundation_type`, `count_floors_pre_eq`, `age_building`). Jika ya, kesimpulannya: kerusakan sangat dipengaruhi lokasi dan kondisi bangunan di sekitarnya, selain material bangunan itu sendiri.
+### Material bangunan sangat berpengaruh
 
-### 4.5 Keterbatasan
-- Fitur tetangga memanfaatkan urutan `building_id` yang menyandikan lokasi/urutan survei; manfaatnya bergantung pada train dan test berasal dari sebaran wilayah yang sama (benar pada kompetisi ini), tetapi belum tentu untuk daerah baru.
-- Bobot kelas disetel pada data validasi yang sama dengan yang dipakai early stopping, sehingga skor validasi sedikit optimistis.
-- Tidak ada data kekuatan guncangan/jarak episentrum langsung; lokasi hanya ditangkap lewat ID wilayah dan tetangga.
+- Bangunan dengan superstruktur batu (`stone_flag`): 50,2% mengalami kerusakan terparah (Grade 5).
+- Batu dengan mortar lumpur (`mud_mortar_stone`): 42,8% Grade 5.
+- Beton bertulang yang direkayasa (`rc_engineered`): hanya 0,7% Grade 5, dan 71,9% hanya Grade 1.
+- Jenis fondasi menunjukkan pola yang sama: fondasi batu/bata dengan mortar lumpur 41,7% Grade 5, sedangkan fondasi beton bertulang (RC) 59,5% Grade 1.
 
-### 4.6 Kesimpulan
+![Kerusakan menurut superstruktur](reports/figures/damage_by_superstructure.png)
+![Kerusakan menurut fondasi](reports/figures/damage_by_foundation.png)
 
+### Jumlah lantai dan umur bangunan
 
----
+- Rata-rata grade naik dari 2,99 (1 lantai) menjadi 4,09 (3 lantai). Bangunan dengan 4 lantai atau lebih jumlahnya sangat sedikit dan rata-ratanya justru turun (sekitar 2,0 sampai 2,5). Kemungkinan karena bangunan tinggi lebih sering memakai beton bertulang.
+- Bangunan yang lebih tua cenderung lebih rusak: rata-rata 2,95 untuk umur 0 sampai 5 tahun, dan sekitar 4,06 untuk umur 41 sampai 80 tahun.
 
-## 5. Referensi
-- Kompetisi Kaggle: Structural Damage Classification (⟪isi link⟫)
-- Data asli: Nepal 2015 Gorkha Earthquake — CBS Nepal / Open Data Nepal
+![Kerusakan menurut lantai dan umur](reports/figures/damage_by_floors_age.png)
+
+### Lokasi
+
+Rata-rata tingkat kerusakan antar distrik berbeda jauh, dari 2,35 (distrik 31) sampai 4,68 (distrik 23). Ini wajar karena kekuatan guncangan berbeda di tiap daerah. Itulah alasan fitur lokasi dan fitur tetangga dibuat.
+
+![Kerusakan per distrik](reports/figures/damage_by_district.png)
+
+## Hasil Model
+
+### Skor keseluruhan (data validasi, 106.693 bangunan)
+
+| Macro F1 tanpa bobot kelas (argmax biasa) | 0,591 |
+| **Macro F1 setelah bobot kelas** | **0,596** |
+| Akurasi | 0,621 (dengan bobot kelas; tanpa bobot 0,626) |
+| Iterasi terbaik (early stopping) | 328 |
+| Bobot kelas hasil tuning | Grade 1 = 0,8; Grade 2 = 1,2; Grade 3 = 1,2; Grade 4 = 1,1; Grade 5 = 0,8 |
+
+### Skor per kelas
+
+| Grade | Precision | Recall | F1-score | Jumlah data |
+|---|---|---|---|---|
+| 1 | 0,716 | 0,672 | 0,694 | 11.034 |
+| 2 | 0,449 | 0,475 | 0,462 | 12.216 |
+| 3 | 0,471 | 0,509 | 0,489 | 19.098 |
+| 4 | 0,551 | 0,600 | 0,574 | 25.738 |
+| 5 | 0,802 | 0,723 | 0,760 | 38.607 |
+| **Macro avg** | 0,598 | 0,596 | **0,596** | 106.693 |
+| Weighted avg | 0,633 | 0,621 | 0,626 | 106.693 |
+
+Penjelasan singkat istilah:
+- **Precision:** dari semua bangunan yang diprediksi masuk suatu kelas, berapa yang benar.
+- **Recall:** dari semua bangunan yang sebenarnya masuk suatu kelas, berapa yang berhasil ditemukan.
+- **F1-score:** rata-rata gabungan precision dan recall.
+- **Macro F1:** rata-rata F1 dari kelima kelas, tanpa memedulikan jumlah data tiap kelas.
+
+### Confusion matrix
+
+![Confusion matrix](reports/figures/confusion_matrix.png)
+
+### Fitur yang paling berpengaruh
+
+![Feature importance](reports/figures/feature_importance.png)
+
+### Sebaran prediksi pada data test
+
+![Sebaran prediksi](reports/figures/prediction_distribution.png)
+
+## Interpretasi Hasil
+
+1. **Kelas ekstrem paling mudah ditebak.** Grade 5 (F1 0,760) dan Grade 1 (F1 0,694) memiliki skor tertinggi. Ciri bangunannya jelas: bangunan batu atau lumpur cenderung rusak total, sedangkan bangunan beton bertulang cenderung hanya rusak ringan.
+2. **Kelas tengah paling sulit.** Grade 2 (F1 0,462) dan Grade 3 (F1 0,489) memiliki skor terendah. Tingkat kerusakannya berdekatan, dan penilaian surveyor di batas antar-grade bisa berbeda-beda, sehingga ciri bangunannya mirip tetapi labelnya berbeda. Pada data berskala ordinal seperti ini, kesalahan biasanya terjadi antar kelas yang bersebelahan (silakan cocokkan dengan confusion matrix di atas).
+3. 3. **Penyetelan bobot kelas memberi peningkatan kecil.** Macro F1 naik dari 0,591 menjadi 0,596. Bobotnya menaikkan peluang Grade 2, 3, dan 4 (1,2; 1,2; 1,1) dan menurunkan Grade 1 dan 5 (0,8). Dengan begitu kelas tengah yang sulit ditebak lebih sering terpilih, sehingga precision dan recall tiap kelas menjadi seimbang. Akurasi sedikit turun (0,626 menjadi 0,621) karena Macro F1 yang dikejar, bukan akurasi.
+4. **Akurasi (0,621) lebih tinggi daripada Macro F1 (0,596).** Hal ini wajar pada data yang kelasnya tidak seimbang, karena akurasi lebih dipengaruhi kelas besar yang lebih mudah ditebak.
+5. **Fitur penting.** Fitur paling berpengaruh adalah `ward_id` (nomor wilayah), disusul fitur tetangga bersyarat seperti `c_groun_5_4`, `c_super_5_0`, dan `c_super_20_3`, serta fitur `te_g6sup_*` (rata-rata kerusakan menurut lokasi dan jenis superstruktur). Fitur bangunan murni yang masuk 15 besar hanya `age_building` (umur bangunan). Artinya, model sangat mengandalkan **lokasi dan kondisi bangunan sejenis di sekitarnya**, sejalan dengan temuan EDA bahwa kerusakan sangat berbeda antar wilayah dan antar material bangunan. Nama fitur `c_*` berarti rata-rata tingkat kerusakan pada tetangga dengan jenis superstruktur (`super`), lantai dasar (`groun`), atau fondasi (`found`) yang sama.
+
+## Kesimpulan
+
+Model LightGBM yang dibungkus dalam Pipeline dan ColumnTransformer berhasil memprediksi tingkat kerusakan bangunan pasca gempa Gorkha dengan **Macro F1 0,596** dan **akurasi 0,621** pada data validasi. Public Score di Kaggle adalah 0.59986.
+
+Dua faktor utama yang menentukan kerusakan adalah **material bangunan** (batu dan lumpur jauh lebih rentan daripada beton bertulang) dan **lokasi** (tingkat kerusakan antar distrik sangat berbeda). Fitur lokasi dan fitur tetangga menjadi penentu utama performa model, sedangkan penyetelan bobot kelas memberi tambahan kecil pada Macro F1 (0,591 menjadi 0,596).
+
+Model paling akurat pada Grade 5 dan Grade 1, dan paling sulit membedakan Grade 2 dan Grade 3 karena karakteristiknya mirip.
+
+## Keterbatasan dan Saran
+
+- Fitur tetangga memakai urutan `building_id`, yang menyimpan informasi lokasi dan urutan survei. Fitur ini efektif di kompetisi ini karena data latih dan data test berasal dari wilayah yang sama, tetapi belum tentu bekerja untuk daerah lain.
+- Bobot kelas disetel pada data validasi yang sama dengan yang dipakai untuk menghentikan pelatihan, sehingga skor validasi bisa sedikit lebih tinggi dari skor sebenarnya.
+- Data tidak memuat kekuatan guncangan atau jarak ke pusat gempa. Lokasi hanya ditangkap lewat kode wilayah dan bangunan di sekitarnya.
+- Saran pengembangan: mencoba model lain (misalnya XGBoost atau CatBoost) lalu menggabungkannya, melakukan pencarian parameter yang lebih luas, dan memakai cross-validation yang lebih lengkap.
+
+## Teknologi yang Digunakan
+
+Python, pandas, NumPy, scikit-learn (Pipeline dan ColumnTransformer), LightGBM, matplotlib, joblib, dan Jupyter Notebook. Daftar lengkapnya ada di `requirements.txt`.
