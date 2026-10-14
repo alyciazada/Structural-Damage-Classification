@@ -306,13 +306,6 @@ Kalau melihat hasil EDA dan model, dua hal yang paling berkaitan dengan kerusaka
 
 Dari kelima kelas, model paling bagus mengenali Grade 5 dan Grade 1. Sebaliknya, Grade 2 dan Grade 3 masih cukup sulit dibedakan karena karakteristiknya mirip.
 
-## Keterbatasan dan Ide Pengembangan
-
-- Fitur tetangga memanfaatkan urutan `building_id`, yang menyimpan informasi terkait lokasi dan urutan survei. Cara ini cukup membantu untuk kompetisi ini karena data latih dan data test berasal dari wilayah yang sama, tetapi belum tentu cocok jika diterapkan di daerah lain.
-- Bobot kelas dituning menggunakan data validasi yang sama dengan data untuk menentukan kapan pelatihan dihentikan (*early stopping*). Jadi, ada kemungkinan skor validasi sedikit lebih tinggi daripada performa sebenarnya.
-- Dataset tidak menyediakan informasi kekuatan guncangan maupun jarak bangunan ke pusat gempa. Informasi lokasi yang digunakan model hanya berasal dari kode wilayah dan data bangunan di sekitarnya.
-- Untuk pengembangan berikutnya, project ini bisa dicoba dengan model lain seperti XGBoost atau CatBoost, menggabungkan beberapa model, memperluas pencarian parameter, dan menggunakan cross-validation yang lebih lengkap.
-
 ## Tools yang Dipakai
 
 Python, pandas, NumPy, scikit-learn (Pipeline dan ColumnTransformer), LightGBM, matplotlib, joblib, dan Jupyter Notebook. Daftar lengkapnya ada di `requirements.txt`.
